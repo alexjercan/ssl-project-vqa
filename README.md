@@ -4,7 +4,7 @@
 
 1. Download the OK-VQA dataset into `../data/okvqa`
 
-```conole
+```console
 python data.py
 ```
 
