@@ -7,3 +7,9 @@
 ```conole
 python data.py
 ```
+
+2. Run Jupyter to view notebook examples
+
+```console
+jupyter notebook
+```
