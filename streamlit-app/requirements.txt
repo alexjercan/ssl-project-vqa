@@ -1,3 +1,5 @@
+googlesearch-python
+html2text
 transformers
 streamlit
 torch

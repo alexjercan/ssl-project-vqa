@@ -1,3 +1,4 @@
+import torch
 import requests
 import html2text
 
@@ -13,6 +14,9 @@ from transformers import (
 from googlesearch import search
 
 
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+
 def prepare_models():
     qa_model = AutoModelForQuestionAnswering.from_pretrained(
         "deepset/roberta-base-squad2"
@@ -26,6 +30,9 @@ def prepare_models():
         "nlpconnect/vit-gpt2-image-captioning"
     )
     ic_tokenizer = AutoTokenizer.from_pretrained("nlpconnect/vit-gpt2-image-captioning")
+
+    qa_model.to(DEVICE)
+    ic_model.to(DEVICE)
 
     return ic_feature_extractor, ic_model, ic_tokenizer, qa_model, qa_tokenizer
 
@@ -51,7 +58,7 @@ def ic_predict_step(
     pixel_values = ic_feature_extractor(
         images=[image], return_tensors="pt"
     ).pixel_values
-    # pixel_values = pixel_values.to(device)
+    pixel_values = pixel_values.to(DEVICE)
 
     output_ids = ic_model.generate(
         pixel_values, max_length=max_length, num_beams=num_beams

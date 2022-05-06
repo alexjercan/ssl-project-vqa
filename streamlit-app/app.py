@@ -29,9 +29,9 @@ def main():
     )
 
     image_file = st.file_uploader("Upload an image", type=["jpg", "png"])
-    image = read_image(image_file)
+    image = read_image(image_file) if image_file else None
 
-    question = st.text_input("Question").strip()
+    question = st.text_input("Question")
 
     if st.button("Answer"):
         caption, answer = run(
