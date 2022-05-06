@@ -21,10 +21,12 @@ def main():
 
     st.title("Visual Question Answering")
 
-    st.write("""
+    st.write(
+        """
     This is a demo of the Visual Question Answering model.
     It takes an image and a question and returns the answer.
-    """)
+    """
+    )
 
     image_file = st.file_uploader("Upload an image", type=["jpg", "png"])
     image = read_image(image_file)

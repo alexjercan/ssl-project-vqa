@@ -14,7 +14,9 @@ from googlesearch import search
 
 
 def prepare_models():
-    qa_model = AutoModelForQuestionAnswering.from_pretrained("deepset/roberta-base-squad2")
+    qa_model = AutoModelForQuestionAnswering.from_pretrained(
+        "deepset/roberta-base-squad2"
+    )
     qa_tokenizer = AutoTokenizer.from_pretrained("deepset/roberta-base-squad2")
 
     ic_model = VisionEncoderDecoderModel.from_pretrained(
@@ -26,7 +28,6 @@ def prepare_models():
     ic_tokenizer = AutoTokenizer.from_pretrained("nlpconnect/vit-gpt2-image-captioning")
 
     return ic_feature_extractor, ic_model, ic_tokenizer, qa_model, qa_tokenizer
-
 
 
 def get_context_google(caption, num_results=5):
