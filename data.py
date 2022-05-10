@@ -4,6 +4,7 @@ import json
 import torch
 import zipfile
 import requests
+import wikipedia
 import html2text
 from torch.utils.data import DataLoader
 
@@ -13,8 +14,13 @@ from functools import partial
 from datasets import Dataset
 from tqdm import tqdm
 from PIL import Image
-from transformers import VisionEncoderDecoderModel, ViTFeatureExtractor, AutoTokenizer
-from googlesearch import search
+from transformers import (
+    VisionEncoderDecoderModel,
+    ViTFeatureExtractor,
+    AutoTokenizer,
+    AutoModelForQuestionAnswering,
+    pipeline,
+)
 
 P = 8
 tqdm.pandas()
@@ -27,6 +33,7 @@ test_annotations_path = os.path.join(root_path, "mscoco_val2014_annotations.json
 test_image_path = os.path.join(root_path, "val2014")
 test_image_name_prefix = "COCO_val2014_"
 test_qa_data_path = os.path.join(root_path, "val2014_qa_data.json")
+test_ans_data_path = os.path.join(root_path, "val2014_ans_data.json")
 
 train_questions_path = os.path.join(
     root_path, "OpenEnded_mscoco_train2014_questions.json"
@@ -35,7 +42,6 @@ train_annotations_path = os.path.join(root_path, "mscoco_train2014_annotations.j
 train_image_path = os.path.join(root_path, "train2014")
 train_image_name_prefix = "COCO_train2014_"
 train_qa_data_path = os.path.join(root_path, "train2014_qa_data.json")
-
 
 train_images_url = "http://images.cocodataset.org/zips/train2014.zip"
 test_images_url = "http://images.cocodataset.org/zips/val2014.zip"
@@ -65,12 +71,22 @@ urls = [
 zip_paths = list(map(lambda url: os.path.join(data_path, url.split("/")[-1]), urls))
 
 
+def bar_progress(current, total, width=80):
+    progress_message = "Downloading: %d%% [%d / %d] bytes" % (
+        current / total * 100,
+        current,
+        total,
+    )
+    sys.stdout.write("\r" + progress_message)
+    sys.stdout.flush()
+
+
 def download_zip(url, path, force: bool = False):
     if os.path.exists(path):
         print(f"{path} found. skipping...")
         return
 
-    wget.download(url, out=path)
+    wget.download(url, out=path, bar=bar_progress)
 
 
 def download_okvqa(force: bool = False) -> None:
@@ -96,6 +112,13 @@ def read_image(image_path):
     return i_image
 
 
+def get_context_wikipedia(caption):
+    try:
+        return wikipedia.page(caption).content
+    except:
+        return ""
+
+
 def get_caption(
     ic_model,
     ic_feature_extractor,
@@ -118,21 +141,6 @@ def get_caption(
     preds = ic_tokenizer.batch_decode(output_ids, skip_special_tokens=True)
     preds = [pred.strip() for pred in preds]
     return preds[0]
-
-
-def get_context_google(caption):
-    links = list(search(caption, num_results=5))
-
-    html_conv = html2text.HTML2Text()
-    html_conv.ignore_links = True
-    html_conv.escape_all = True
-
-    text = []
-    for link in links:
-        req = requests.get(link)
-        text.append(html_conv.handle(req.text))
-
-    return " ".join(text)
 
 
 def vqa_to_qa(force: bool = False):
@@ -168,9 +176,42 @@ def vqa_to_qa(force: bool = False):
         partial(get_caption, ic_model, ic_feature_extractor, ic_tokenizer)
     )
 
+    test_df["context"] = test_df["caption"].progress_apply(get_context_wikipedia)
+
     test_df.to_json(test_qa_data_path)
+
+
+def get_answer(qa_pipeline, row):
+    question = row["question"]
+    context = row["context"] if row["context"] else row["caption"]
+
+    return qa_pipeline(question, context)
+
+
+def predict_qa(force: bool = False):
+    if os.path.exists(test_ans_data_path) and not force:
+        print("Answer data found. skipping...")
+        return
+
+    test_qa_df = pd.read_json(test_qa_data_path)
+
+    qa_model = AutoModelForQuestionAnswering.from_pretrained(
+        "deepset/roberta-base-squad2"
+    )
+    qa_tokenizer = AutoTokenizer.from_pretrained("deepset/roberta-base-squad2")
+
+    qa_pipeline = pipeline("question-answering", model=qa_model, tokenizer=qa_tokenizer, device=int(torch.cuda.is_available())-1)
+
+    result = pd.DataFrame(test_qa_df[["question", "context", "caption"]].progress_apply(
+        partial(get_answer, qa_pipeline), axis=1
+    ).tolist())
+
+    test_qa_df["answer"] = result["answer"]
+
+    test_qa_df.to_json(test_ans_data_path)
 
 
 if __name__ == "__main__":
     download_okvqa()
     vqa_to_qa()
+    predict_qa()
