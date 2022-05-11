@@ -1,4 +1,4 @@
-googlesearch-python
+wikipedia
 html2text
 transformers
 streamlit

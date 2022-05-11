@@ -1,6 +1,7 @@
 import torch
 import requests
 import html2text
+import wikipedia
 
 from PIL import Image
 from transformers import (
@@ -11,25 +12,19 @@ from transformers import (
     pipeline,
 )
 
-from googlesearch import search
-
-
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+from download_models import download_models
 
 
 def prepare_models():
-    qa_model = AutoModelForQuestionAnswering.from_pretrained(
-        "deepset/roberta-base-squad2"
-    )
-    qa_tokenizer = AutoTokenizer.from_pretrained("deepset/roberta-base-squad2")
+    (
+        ic_feature_extractor,
+        ic_model,
+        ic_tokenizer,
+        qa_model,
+        qa_tokenizer,
+    ) = download_models()
 
-    ic_model = VisionEncoderDecoderModel.from_pretrained(
-        "nlpconnect/vit-gpt2-image-captioning"
-    )
-    ic_feature_extractor = ViTFeatureExtractor.from_pretrained(
-        "nlpconnect/vit-gpt2-image-captioning"
-    )
-    ic_tokenizer = AutoTokenizer.from_pretrained("nlpconnect/vit-gpt2-image-captioning")
+    DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     qa_model.to(DEVICE)
     ic_model.to(DEVICE)
@@ -37,28 +32,25 @@ def prepare_models():
     return ic_feature_extractor, ic_model, ic_tokenizer, qa_model, qa_tokenizer
 
 
-def get_context_google(caption, num_results=5):
-    links = list(search(caption, num_results=num_results))
+def get_context_wikipedia(caption):
+    options = wikipedia.search(caption, results=1)
 
-    html_conv = html2text.HTML2Text()
-    html_conv.ignore_links = True
-    html_conv.escape_all = True
-
-    text = []
-    for link in links:
-        req = requests.get(link)
-        text.append(html_conv.handle(req.text))
-
-    return " ".join(text)
+    pages = [caption] + [wikipedia.page(option).content for option in options]
+    return "\n".join(pages)
 
 
-def ic_predict_step(
-    ic_feature_extractor, ic_model, ic_tokenizer, image, max_length=16, num_beams=4
+def get_caption(
+    ic_model,
+    ic_feature_extractor,
+    ic_tokenizer,
+    image,
+    max_length=16,
+    num_beams=4,
 ):
     pixel_values = ic_feature_extractor(
         images=[image], return_tensors="pt"
     ).pixel_values
-    pixel_values = pixel_values.to(DEVICE)
+    pixel_values = pixel_values.to(ic_model.device)
 
     output_ids = ic_model.generate(
         pixel_values, max_length=max_length, num_beams=num_beams
@@ -69,11 +61,11 @@ def ic_predict_step(
     return preds[0]
 
 
-def qa_predict_step(qa_model, qa_tokenizer, question, context, max_length=16):
-    nlp = pipeline("question-answering", model=qa_model, tokenizer=qa_tokenizer)
-    answer = nlp(question, context)["answer"]
+def get_answer(qa_model, qa_tokenizer, question, context):
+    qa_pipeline = pipeline("question-answering", model=qa_model, tokenizer=qa_tokenizer)
+    result = qa_pipeline(question, context)
 
-    return answer
+    return result
 
 
 def run(
@@ -87,17 +79,15 @@ def run(
     max_length=16,
     num_beams=4,
 ):
-    caption = ic_predict_step(
-        ic_feature_extractor,
+    caption = get_caption(
         ic_model,
+        ic_feature_extractor,
         ic_tokenizer,
         image,
         max_length=max_length,
         num_beams=num_beams,
     )
-    context = get_context_google(caption)
-    answer = qa_predict_step(
-        qa_model, qa_tokenizer, question, context, max_length=max_length
-    )
+    context = get_context_wikipedia(caption)
+    answer = get_answer(qa_model, qa_tokenizer, question, context)
 
-    return caption, answer
+    return caption, answer, context
