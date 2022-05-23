@@ -4,6 +4,7 @@ from transformers import (
     AutoTokenizer,
     AutoModelForQuestionAnswering,
 )
+import nltk
 
 QA_MODEL_NAME = "deepset/roberta-base-squad2"
 IC_MODEL_NAME = "nlpconnect/vit-gpt2-image-captioning"
@@ -28,3 +29,4 @@ def download_models():
 
 if __name__ == "__main__":
     download_models()
+    nltk.download("all")

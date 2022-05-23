@@ -1,4 +1,5 @@
 import torch
+import random
 import requests
 import html2text
 import wikipedia
@@ -11,6 +12,7 @@ from transformers import (
     AutoModelForQuestionAnswering,
     pipeline,
 )
+from nltk import pos_tag, word_tokenize
 
 from download_models import download_models
 
@@ -32,10 +34,25 @@ def prepare_models():
     return ic_feature_extractor, ic_model, ic_tokenizer, qa_model, qa_tokenizer
 
 
-def get_context_wikipedia(caption):
-    options = wikipedia.search(caption, results=1)
+def get_wikipedia_page(string):
+    try:
+        p = wikipedia.summary(string, auto_suggest=False)
+    except wikipedia.DisambiguationError as e:
+        s = e.options[0]
+        p = wikipedia.summary(s, auto_suggest=False)
 
-    pages = [caption] + [wikipedia.page(option).content for option in options]
+    return p
+
+
+def get_context_wikipedia(caption):
+    words = word_tokenize(caption)
+    tags = pos_tag(words)
+
+    tags = [w for (w, t) in tags if t[0] == "N"]
+
+    options = list(set([o for tag in tags for o in wikipedia.search(tag, results=1)]))
+    pages = [caption] + [get_wikipedia_page(option) for option in options]
+
     return "\n".join(pages)
 
 

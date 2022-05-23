@@ -3,3 +3,4 @@ html2text
 transformers
 streamlit
 torch
+nltk
