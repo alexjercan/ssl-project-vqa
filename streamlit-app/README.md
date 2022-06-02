@@ -2,6 +2,8 @@
 
 Docker image using streamlit to test the VQA pipeline.
 
+![thumbnail](./resources/qa_example.png)
+
 ## Quickstart
 
 ### Docker Compose
