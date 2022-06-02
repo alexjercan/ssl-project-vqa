@@ -3,6 +3,7 @@ import streamlit as st
 from inference import run, prepare_models
 from PIL import Image
 from io import BytesIO
+from urllib.request import urlopen
 
 
 @st.cache(allow_output_mutation=True)
@@ -39,8 +40,14 @@ def main():
     """
     )
 
-    image_file = st.file_uploader("Upload an image", type=["jpg", "png"])
+    col1, col2 = st.columns(2)
+
+    image_file = col1.file_uploader("Upload an image", type=["jpg", "png"])
+    image_url = col2.text_input("Enter image url:")
     image = read_image(image_file) if image_file else None
+    if image is None and image_url:
+        with urlopen(image_url) as url:
+            image = Image.open(url)
 
     question = st.text_input("Question")
 
