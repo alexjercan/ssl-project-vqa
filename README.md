@@ -1,7 +1,5 @@
 # Visual Question Anwering
 
-## Description
-
 Visual Question Answering pipeline that works by converting the image into a
 caption and then using a question answering model to predict an answer.
 
