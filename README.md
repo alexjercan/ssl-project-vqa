@@ -1,14 +1,32 @@
 # Visual Question Anwering
 
+## Description
+
 Visual Question Answering pipeline that works by converting the image into a
 caption and then using a question answering model to predict an answer.
 
-![thumbnail](./resources/vqa-model-2.png)
+## Quick Start
+
+1. Download the OK-VQA dataset into `../data/okvqa`
+
+```console
+python data.py
+```
+
+2. Run Jupyter to view notebook examples
+
+```console
+jupyter notebook
+```
+
+3. To run the demo see [streamlit-app](./streamlit-app)
 
 ## Architecture
 
 The pipeline for the Visual Question Answering algorithm has two main
 components, the image captioning and the text question answering models.
+
+![thumbnail](./resources/vqa-model-2.png)
 
 We have used a pre-trained GPT2 model on the task of image captioning. It has
 an encoder decoder architecture and works by generating image embeddings using
@@ -47,19 +65,3 @@ the captions of the image may not always include the answer and additional
 actions are needed. The dataset contains 100,000 questions sampled from SQUAD
 and 50,000 questions which are adversarially written such that an answer cannot
 be obtained.
-
-## Quick Start
-
-1. Download the OK-VQA dataset into `../data/okvqa`
-
-```console
-python data.py
-```
-
-2. Run Jupyter to view notebook examples
-
-```console
-jupyter notebook
-```
-
-3. To run the demo see [streamlit-app](./streamlit-app)
